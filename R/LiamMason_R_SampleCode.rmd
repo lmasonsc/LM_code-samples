@@ -1,1 +1,438 @@
+---
+title: "MATH-2620_HW-03"
+author: "Liam Mason"
+date: "2025-11-07"
+output: html_document
+---
 
+*This code is from a problem set for my MATH-2620 Statistical Learning & Data Science class. Problems from Chapter 5 work with resampling methods. Problems from Chapter 6 work with model selection methods. More information about each problem is explained below.*
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "~/Documents/Georgetown/Classes/Statistical Learning & Data Science/ALL CSV FILES - 2nd Edition")
+```
+# Libraries #
+```{r Libraries}
+library(glmnet)
+library(boot)
+library(leaps)
+library(pls)
+```
+
+# Chapter 5 #
+## Problem 2 ##
+*In this problem, I calculate the theoretical probability that observation j of a data set occurs in a bootstrap sample and then test that theory in practice. Both theoretical calculation and empirical observation indicate that as n nears infinity, the probability that the jth observation is in the bootstrap sample is approximately 0.632. This makes sense given the limit definition of e^x, as 1-e^(-1) =~0.632.*
+```{r 5.2}
+### Part G ###
+n = 1:100000
+pr = 1 - (1 - 1/n)^n
+plot(n, pr, type = "l",
+     xlab = "Sample size",
+     ylab = "Probability jth observation appears",
+     main = "Bootstrap Inclusion Probability vs Sample Size")
+abline (h = 0.632, col = 'green')
+
+### Part H ###
+store = rep(NA, 10000)
+for(i in 1:10000){
+  store[i] <- sum(sample(1:100, rep=TRUE) == 4) > 0
+}
+mean(store)
+```
+
+## Problem 8 ##
+*In Problem 5.8, I perform leave-one-out cross-validation to evaluate different order polynomial models on a simulated data set. The assignment asked for two LOOCV evaluations, each with a different seed, which is why there is redundancy in the code. More of my comments are below.*
+```{r 5.8}
+### Part A ###
+set.seed(1)
+x = rnorm(100)
+y = x - 2 * x^2 + rnorm(100)
+# In this data set, n = 100 and p = 1. We are examining 1 predictor over 100 observations. 
+# Our equation is: y = x - 2x^2 + ε, where ε ~ N(0,1).
+
+### Part B ###
+plot(x, y, main = "Scatterplot of x and y")
+# the scatterplot resembles a downward facing parabola with slightly greater variance around x = 0. 
+
+### Part C ###
+set.seed(02)
+df = data.frame(x = x, y = y)
+cv.error = rep(0, 4)
+for (i in 1:4) {
+  glm.fit = glm(y ~ poly(x, i), data = df)
+  cv.error[i] = cv.glm(df, glm.fit)$delta[1]
+}
+cv.error
+plot(cv.error, type = 'o', main = "LOOCV (Seed 02)", xlab = "Degree of Polynomial", ylab = "Mean Squared Error")
+
+### Part D ###
+set.seed(03)
+cv.error2 = rep(0, 4)
+for (i in 1:4) {
+  glm.fit2 = glm(y ~ poly(x, i), data = df)
+  cv.error2[i] = cv.glm(df, glm.fit2)$delta[1]
+}
+cv.error2
+plot(cv.error2, type = 'o', main = "LOOCV (Seed 03)", xlab = "Degree of Polynomial", ylab = "Mean Squared Error")
+# The results do not change. There are no random aspects to computing LOOCV, so setting a seed to control random aspects and changing the seed would not make a difference in the error estimates. 
+
+### Part E ###
+# The 2nd-degree polynomial model in Part C has the smallest LOOCV error. 
+# This is what I expected, as we wrote the relationship of x and y in this experiment to be a 2nd degree polynomial. Thus, it makes sense this model would best represent the data. 
+
+### Part F ###
+summary(glm.fit)
+# The coefficients of the polynomial models with orders 1, 3, and 4 are not statistically significant. However, the coefficients of the 2nd-degree polynomial is.
+# This aligns with the conclusions drawn based on the cross-validation results, as it demonstrates that a 2nd-degree polynomial is the best-fitting model.
+```
+
+## Problem 9 ##
+*In Problem 5.9, I take the sample mean, median, and 10th percentile of a provided data set (Boston) and compare the standard error of each metric to the corresponding bootstrap estimation. More of my comments are below.*
+```{r 5.9}
+boston = read.csv("3_Boston.csv")
+
+### Part A ###
+muhat = mean(boston$medv)
+
+### Part B ###
+se_muhat = sd(boston$medv)/sqrt(506)
+# The standard error of muhat is ~0.409.
+# This means that each observation of 'medv' is, on average, approximately 0.409 units from the mean.
+
+### Part C ###
+set.seed(09)
+mu.df.fn = function(data, index) {
+  mean(data$medv[index])
+}
+boot_muhat = boot(data = boston, statistic = mu.df.fn, R = 1000)
+boot_muhat
+sd(boot_muhat$t)
+# With seed 09, the estimate of the standard error of muhat is ~0.420, which is quite close (~0.11 off) to the estimate of the standard error of muhat in Part B.
+
+### Part D ###
+se_boot <- sd(boot_muhat$t)
+ci_boot_norm <- c(muhat - 2*se_boot, muhat + 2*se_boot)
+ci_boot_norm
+# The 95 percent confidence interval for the bootstrap estimate for the mean of 'medv' is thus [21.69360, 23.37201]
+t.test(boston$medv)$conf.int
+# The t-test has a 95% confidence interval of [21.72953, 23.33608], which is less than one-tenth off from our bootstrap confidence interval.
+
+### Part E ###
+muhat_med = median(boston$medv)
+muhat_med
+
+### Part F ###
+set.seed(9)
+muhat_med.df.fn = function(data, index) median(data$medv[index])
+boot_muhat_med = boot(data = boston, statistic = muhat_med.df.fn, R = 1000)
+boot_muhat_med
+sd(boot_muhat_med$t)
+# The standard error of boot_muhat_med is ~0.383, which is similar to the SE of the bootstrap and classic estimates of muhat.
+
+### Part G ###
+muhat_10 = quantile(boston$medv, probs = c(0.1))
+muhat_10
+
+### Part H ###
+set.seed(9)
+muhat_q10.df.fn = function(data, index) quantile(data$medv[index], probs = 0.1)
+boot_muhat_q10 = boot(data = boston, statistic = muhat_q10.df.fn, R = 1000)
+boot_muhat_q10
+sd(boot_muhat_q10$t)
+# The bootstrap estimate of the standard error of the bootstrap estimate of muhat_0.1 ('boot_muhat_q10') is ~0.494
+# This metric is larger than observed in the mean and median, reflecting greater variability in the tail quantiles.
+```
+
+# Chapter 6 #
+## Problem 8 ##
+*In Problem 6.8, I create an arbitrary order 3 polynomial equation and perform best subset, forward stepwise, and backward stepwise selection to compare different order polynomial models to represent the equation. More of my comments are below.*
+```{r 6.8}
+### Part A ###
+set.seed(08)
+n = 100
+X = rnorm(n)
+eps = rnorm(n)
+
+### Part B ###
+beta0 = 1; beta1 = 2; beta2 = 3; beta3 = 4
+Y = beta0 + beta1*X + beta2*X^2 + beta3*X^3 + eps
+
+### Part C ###
+df = data.frame(Y = Y, X = X)
+for (d in 2:10) df[[paste0("X", d)]] = X^d
+regfit.full = regsubsets(Y ~ ., data = df, nvmax = 10)
+reg.sum = summary(regfit.full)
+
+which.min(reg.sum$cp)
+which.min(reg.sum$bic)
+which.max(reg.sum$adjr2)
+# All metrics agree that the cubic model is the optimal model, which makes sense given the equation provided in Part B.
+
+par(mfrow = c(1,3))
+plot(reg.sum$cp,  type = "b", xlab = "Number of Predictors", ylab = "Cp", main="Cp")
+points(which.min(reg.sum$cp), min(reg.sum$cp), pch = 19)
+
+plot(reg.sum$bic, type = "b", xlab = "Number of Predictors", ylab = "BIC", main="BIC")
+points(which.min(reg.sum$bic), min(reg.sum$bic), pch = 19)
+
+plot(reg.sum$adjr2, type = "b", xlab = "Number of Predictors", ylab = "Adj R^2", main="Adj R^2")
+points(which.max(reg.sum$adjr2), max(reg.sum$adjr2), pch = 19)
+par(mfrow = c(1,1))
+# The graphs further support the previous metrics.
+
+coef(regfit.full, which.min(reg.sum$cp))
+coef(regfit.full, which.min(reg.sum$bic))
+coef(regfit.full, which.max(reg.sum$adjr2))
+# Only one of the above lines is necessary, but I wanted to show again that all methods select the same the model with identical coefficients.
+# Y = 1.05 + 2.07X + 2.94X^2 + 3.98X^3 is the selected model. This is approximately equal to the arbitrary coefficients I provided. Discrepancies are likely due to the normally-distributed error term.
+
+### Part D ###
+reg.fwd = regsubsets(Y ~ ., data = df, nvmax = 10, method = "forward")
+reg.bwd = regsubsets(Y ~ ., data = df, nvmax = 10, method = "backward")
+
+sum.fwd = summary(reg.fwd)
+sum.bwd = summary(reg.bwd)
+
+which.min(sum.fwd$cp)
+coef(reg.fwd, which.min(sum.fwd$cp))
+which.min(sum.bwd$cp)
+coef(reg.bwd, which.min(sum.bwd$cp))
+# Once again, the cubic model is chosen as the best model in both forward and backward steppwise selection. 
+
+# Because this is such a specific model, BIC and Adj. R^2 will likely yield the same results.
+which.min(sum.fwd$bic)
+coef(reg.fwd, which.min(sum.fwd$bic))
+which.min(sum.fwd$adjr2)
+coef(reg.fwd, which.min(sum.fwd$adjr2))
+which.max(sum.bwd$bic)
+coef(reg.bwd, which.max(sum.bwd$bic))
+which.max(sum.bwd$adjr2)
+coef(reg.bwd, which.max(sum.bwd$adjr2))
+
+### Part E ###
+Xmat = model.matrix(Y ~ ., data = df)[, -1]
+set.seed(08)
+cv.las = cv.glmnet(Xmat, Y, alpha = 1)
+plot(cv.las)
+
+cv.las$lambda.min
+coef(cv.las, s = "lambda.min")
+# Fitting the lasso model to the simulated data, the optimal lambda value is ~0.061.
+# The coefficient estimates are similar to those in the previous models. They still accurately reflect the actual coefficients in the input model.
+
+### Part F ###
+set.seed(08)
+eps2 = rnorm(n)
+Y2 = 1 + 7*X^7 + eps2
+
+df2 = data.frame(Y = Y2, X = X)
+for (d in 2:10) df2[[paste0("X", d)]] = X^d
+
+reg2 = regsubsets(Y ~ ., data = df2, nvmax = 10)
+sum2 = summary(reg2)
+which.min(sum2$bic)
+coef(reg2, which.min(sum2$bic))
+# I stuck with BIC to make best subset selection simpler.
+
+Xmat2 = model.matrix(Y ~ ., data = df2)[, -1]
+set.seed(08)
+cv.las2 = cv.glmnet(Xmat2, Y2, alpha = 1)
+coef(cv.las2, s = "lambda.min")
+# With this model Y2, best subset selection and the lasso yield different results. Best subset selection picked a model is more accurate to the actual model, but included very small coefficients for X^8 and X^9. 
+# The lasso model yielded a substantially incorrect intercept, and the coefficients at X^5 and X^7 are off by more. This makes sense since the variables X, X^2, ... in Lasso are highly collinear.
+```
+
+
+## Problem 9 ##
+*In Probem 6.9, I use linear ordinary least squares, ridge, least absolute shrinkage and selection operator (LASSO), principal component, and partial least squares regression techniques to model a given data set (College), using cross-validation to determine the best parameters for each model. I compare the test MSE from each model to determine which technique best fits the data. More of my comments are below.* 
+```{r 6.9}
+### Part A ###
+set.seed(09)
+College = read.csv("1_College.csv", row.names = 1)
+
+n = nrow(College)
+train_idx = sample(1:n, n/2)
+test_idx  = setdiff(1:n, train_idx)
+
+train = College[train_idx, ]
+test  = College[test_idx, ]
+
+### Part B ###
+lm.fit = lm(Apps ~ ., data = train)
+lm.pred = predict(lm.fit, newdata = test)
+
+mse.lm = mean((lm.pred - test$Apps)^2)
+mse.lm
+
+### Part C ###
+set.seed(09)
+x.train = model.matrix(Apps ~ ., data = train)[, -1]
+x.test  = model.matrix(Apps ~ ., data = test)[, -1]
+y.train = train$Apps
+y.test  = test$Apps
+
+cv.ridge = cv.glmnet(x.train, y.train, alpha = 0)
+plot(cv.ridge)
+
+ridge.lambda.best = cv.ridge$lambda.min
+ridge.pred = predict(cv.ridge, s = ridge.lambda.best, newx = x.test)
+mse.ridge = mean((ridge.pred - y.test)^2)
+
+ridge.lambda.best
+mse.ridge
+
+### Part D ###
+set.seed(09)
+cv.lasso = cv.glmnet(x.train, y.train, alpha = 1)
+plot(cv.lasso)
+
+lasso.lambda.best = cv.lasso$lambda.min
+lasso.pred = predict(cv.lasso, s = lasso.lambda.best, newx = x.test)
+mse.lasso = mean((lasso.pred - y.test)^2)
+
+lasso.lambda.best
+mse.lasso
+
+lasso.coef = coef(cv.lasso, s = "lambda.min")
+lasso.coef
+sum(lasso.coef != 0)
+# There are 10 non-zero coefficient estimates
+
+### Part E ###
+set.seed(09)
+pcr.fit = pcr(Apps ~ ., data = train, scale = TRUE, validation = "CV")
+
+cv_msep = RMSEP(pcr.fit, estimate = "CV")
+M_pcr = which.min(drop(cv_msep$val)[-1])
+
+pcr.pred = predict(pcr.fit, newdata = test, ncomp = M_pcr)
+mse.pcr = mean((pcr.pred - test$Apps)^2)
+
+M_pcr #16 components were selected by CV
+mse.pcr
+
+### Part F ###
+set.seed(09)
+pls.fit = plsr(Apps ~ ., data = train, scale = TRUE, validation = "CV")
+
+cv_msep_pls = RMSEP(pls.fit, estimate = "CV")
+M_pls = which.min(drop(cv_msep_pls$val)[-1])
+
+pls.pred = predict(pls.fit, newdata = test, ncomp = M_pls)
+mse.pls = mean((pls.pred - test$Apps)^2)
+
+M_pls
+mse.pls
+
+### Part G ###
+results = c(
+  OLS   = mse.lm,
+  Ridge = mse.ridge,
+  Lasso = mse.lasso,
+  PCR   = mse.pcr,
+  PLS   = mse.pls
+)
+results
+which.min(results)
+barplot(results, las = 2, ylab = "Test MSE", main = "College: Test MSE by Method")
+# All of these test errors are between ~1.6 and 2.4 million, with ridge regression yielding the greatest test error and OLS regression yielding the least test error.
+# There is not much difference in the test errors from these five approaches, indicating that the relative performance of these methods depends on the data and validation split.
+# From these observations, it seems we can predict the number of college applications relatively accurately. RMSE would be in the thousands for each of these models, which is a small portion of the total applications received.
+```
+
+## Problem 10 ##
+*In Problem 6.10, I generate a data set described by a 1,000 x 20 matrix* X *times arbitrary beta terms with some elements zero and others nonzero, plus a white noise error term. I split the data into a test set and training set and use best subset selection to create a model from the training set and test set. Finally, I create a plot comparing the estimated coefficients from the best subset selection to the true coefficients I used to generate the data. More of my comments are below.* 
+```{r 6.10}
+### Part A ###
+set.seed(10)
+n = 1000
+p = 20
+X = matrix(rnorm(n * p), n, p)
+beta = c(2, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+eps = rnorm(n)
+Y = X %*% beta + eps
+
+### Part B ###
+set.seed(10)
+
+train = sample(1:n, 100)
+test = setdiff(1:n, train)
+
+x.train = X[train, ]
+x.test  = X[test, ]
+y.train = Y[train]
+y.test  = Y[test]
+
+### Part C ###
+train.df = as.data.frame(x.train)
+names(train.df) = paste0("X", 1:ncol(train.df))
+train.df$Y = y.train
+
+regfit = regsubsets(Y ~ ., data = train.df, nvmax = p)
+reg.sum = summary(regfit)
+
+mse.train = reg.sum$rss / length(y.train)
+
+plot(1:p, mse.train, type = "b",
+     xlab = "Number of Predictors (model size)",
+     ylab = "Training MSE",
+     main = "Training MSE vs. Model Size (Best Subset, Training Set)")
+points(which.min(mse.train), min(mse.train), pch = 19)
+which.min(mse.train) # Minimizing RSS, the best model uses all 20 predictors.
+
+### Part D ###
+test.df = as.data.frame(x.test)
+names(test.df) = paste0("X", 1:ncol(test.df))
+test.df$Y = y.test
+
+predict_regsubsets = function(object, newdata, id) {
+  coefi = coef(object, id = id)
+  mat   = model.matrix(Y ~ ., newdata)
+  xvars = names(coefi)
+  drop(mat[, xvars] %*% coefi)
+}
+
+mse.test = rep(NA_real_, p)
+for (k in 1:p) {
+  yhat = predict_regsubsets(regfit, newdata = test.df, id = k)
+  mse.test[k] = mean((y.test - yhat)^2)
+}
+
+plot(1:p, mse.test, type = "b",
+     xlab = "Number of Predictors (model size)",
+     ylab = "Test MSE",
+     main = "Test MSE vs. Model Size (Best Subset, Test Set)")
+points(which.min(mse.test), min(mse.test), pch = 19)
+
+### Part E ###
+which.min(mse.test)
+min(mse.test)
+# A model with 3 predictors leads to the minimum value of the test set MSE. 
+# This reflects the actual model Y = 2X_1 + 3X_2 + 4X_3 + ε created at the beginning. The error is likely due to the sampling noise.
+
+### Part F ###
+# The selected model perfectly matches the true model size with 3 predictors. This means the best subset selection procedure correctly identified the model complexity that generalizes best.
+best.k = 3
+coef.best = coef(regfit, id = best.k)
+coef.best
+# The estimated coefficient values match that of the model. The estimated model is Yhat = 0.07 + 1.8*X1 + 3*X2 + 3.9*X3, which is very close to Y = 2X_1 + 3X_2 + 4X_3 + ε. The differences are likely a result of the error distribution. 
+# Thus, the selected model at which the test set MSE is minimized is very true to the actual model.
+
+### Part G ###
+error.vec = rep(NA_real_, p)
+for (r in 1:p) {
+  beta.hat = rep(0, p)
+  coef.r = coef(regfit, id = r)
+  names.r = names(coef.r)[-1]
+  beta.hat[as.numeric(sub("X", "", names.r))] = coef.r[-1]
+  error.vec[r] = sqrt(sum((beta.hat - beta)^2))
+}
+
+plot(1:p, error.vec, type = "b",
+     xlab = "Model size (r)",
+     ylab = expression(sqrt(sum((hat(beta)[j]^r - beta[j])^2))),
+     main = "Coefficient estimation error vs. model size")
+points(which.min(error.vec), min(error.vec), pch = 19)
+# The coefficient-error plot reaches a minimum at r=3, which corresponds to the true model.
+# As more predictors are added, the distance between estimated and true coefficients grows, just as the test MSE begins to rise.
+# This plot looks very similar to the MSE plot from Part D. Thus, both plots support the observation that moderate model complexity yields the most accurate and stable estimates.
+```

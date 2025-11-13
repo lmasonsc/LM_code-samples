@@ -9,7 +9,7 @@ Published .html files are provided for immediate viewing of results.
 ### R
   * LiamMason_R_SampleCode.rmd
   * LiamMason_R_Publish.html
-  * R data (Boston.csv, College.csv) 
+  * R data (1_College.csv, 3_Boston.csv)
 ### Python
   * LiamMason_Python_SampleCode.ipynb
   * LiamMason_Python_Publish.html

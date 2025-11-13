@@ -13,8 +13,8 @@ cd "/Users/lmasonsc/Documents/Georgetown/Classes/Not This Semester/2024 (4)Sprin
 /* ==========================================================================
    PROBLEM 2. Alcohol and Employment
    
-   abuse 				Dummy variable indicating if individual abuses alcohol
-   employ				Dummy variable indicating if individual is employed
+   abuse 				   Dummy variable indicating if individual abuses alcohol
+   employ				   Dummy variable indicating if individual is employed
    mothalc, fathalc		Dummy variable indicating if mother and father abuse alcohol, respectively
    ========================================================================== */
    use "alcohol.dta", clear
@@ -39,12 +39,12 @@ cd "/Users/lmasonsc/Documents/Georgetown/Classes/Not This Semester/2024 (4)Sprin
 /* ==========================================================================
    PROBLEM 3. College GPA and Classes Skipped
    
-   colGPA				College GPA of students
-   skipped				Avg number of lectures skipped per week
-   walk, bike			Dummy variables indicating if walk, bike, or other to class
-   hsGPA				High school GPA of students
-   age					Age of students
-   ACT					ACT score of students
+   colGPA				   College GPA of students
+   skipped				   Avg number of lectures skipped per week
+   walk, bike			   Dummy variables indicating if walk, bike, or other to class
+   hsGPA				      High school GPA of students
+   age					   Age of students
+   ACT					   ACT score of students
    business, engineer	Dummy variables indicating major
    ========================================================================== */
    use "GPA1.dta", clear
@@ -78,10 +78,10 @@ cd "/Users/lmasonsc/Documents/Georgetown/Classes/Not This Semester/2024 (4)Sprin
 /* ==========================================================================
    PROBLEM 4. Demand for Fish
    
-   ltotqty 					Logarithm of total quantity sold on a particular day, t
-   lavgprc 				Logarythm of average price paid by buyers on that day
+   ltotqty 					   Logarithm of total quantity sold on a particular day, t
+   lavgprc 				      Logarithm of average price paid by buyers on that day
    mon, tues, wed, thurs 	Dummy variables indicating days of the week
-   wave2, wave3 			Avg max wave height over past 2 days (wave3 = 2 day lag)
+   wave2, wave3 			   Avg max wave height over past 2 days (wave3 = 2 day lag)
    speed2, speed3 			Avg wind speed over past 2 days (speed3 = 2 day lag)
    ========================================================================== */
    use "FISH.DTA", clear

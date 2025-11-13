@@ -2,6 +2,7 @@
 * ECON-2120 HW 8 Code Sample
 * Author: Liam Mason
 * Note: This code is from a problem set in an econometrics class I took at Georgetown. In the problem set, I work with instrumental variables to generate accurate regression models on real-world data. I have included descriptions of important variables before each problem based on the information provided in the problem and data set.
+* Disclaimer: There may be some formatting issues between the terminal and the viewonly code. Please excuse any indenting discrepancies.
 *******************************************************************************
 
 version 19.0
